@@ -6,7 +6,7 @@
 check_controls_v7() {
   local dir="$1"
   echo "───────────────────────────────────────────────"
-  echo "🔍 Running Apache Tomcat 9 CIS Benchmark v1.2.0 Checks"
+  echo "🔍 Running Apache Tomcat 7 CIS Benchmark Checks"
   echo "───────────────────────────────────────────────"
   REPORT="$dir/tomcat7_cis_compliance_report.txt"
   echo "Apache Tomcat 7 Compliance Report - $(date)" > "$REPORT"
