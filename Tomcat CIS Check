@@ -1,0 +1,91 @@
+#!/bin/bash
+
+# Apache Tomcat CIS Compliance Checker (No InSpec)
+# Scans for Tomcat installations, detects version, checks for ALL CIS control compliance (7–11)
+# Output: Terminal + ~/tomcat_cis_compliance_report.txt
+
+REPORT="$HOME/tomcat_cis_compliance_report.txt"
+echo "Apache Tomcat CIS Compliance Report" > "$REPORT"
+echo "Generated: $(date)" >> "$REPORT"
+echo "==================================================" >> "$REPORT"
+
+TOMCAT_DIRS=(
+    "/opt/keeper/share/guacamole/tomcat"
+    "/opt/atlassian/confluence"
+    "/opt/jfrog/artifactory/app/artifactory/tomcat"
+    "/opt/apache-tomcat-*"
+    "/opt/coverity/server/home"
+    "/opt/atlassian/jira"
+    "/opt/xifinportal"
+    "/opt/accession"
+    "/opt/biplusportal"
+    "/opt/leoxportal"
+    "/opt/casportal"
+    "/opt/adminws"
+    "/opt/claimstatus"
+    "/opt/client"
+    "/opt/docstore"
+    "/opt/electronicpayment"
+    "/opt/electronicpaymentposting"
+    "/opt/eligibility"
+    "/opt/eligibilityinternal"
+    "/opt/filemaintenance"
+    "/opt/imageservice"
+    "/opt/messagews"
+    "/opt/patient"
+    "/opt/payment"
+    "/opt/payor"
+    "/opt/tomcat*"
+    "/opt/clientportal"
+    "/opt/eomportal"
+    "/opt/patientportal"
+    "/opt/peportal"
+)
+
+get_tomcat_version() {
+  local dir="$1"
+  local jar=$(find "$dir" -name catalina.jar 2>/dev/null | head -n1)
+  if [[ -f "$jar" ]]; then
+    unzip -p "$jar" META-INF/MANIFEST.MF 2>/dev/null | grep "Implementation-Version" | awk '{print $2}'
+  else
+    echo ""
+  fi
+}
+
+# Control logic will be added below per CIS benchmark section and Tomcat version
+source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v7.sh)
+source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v8.sh)
+source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v9.sh)
+source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v10.sh)
+source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v11.sh)
+
+check_all_cis_controls() {
+  local dir="$1"
+  local version_major="$2"
+
+  case "$version_major" in
+    7) check_controls_v7 "$dir" ;;
+    8) check_controls_v8 "$dir" ;;
+    9) check_controls_v9 "$dir" ;;
+    10) check_controls_v10 "$dir" ;;
+    11) check_controls_v11 "$dir" ;;
+    *) echo "⚠️ Unsupported version: $version_major" >> "$REPORT" ;;
+  esac
+}
+
+for base_path in "${TOMCAT_DIRS[@]}"; do
+  for dir in $(ls -d $base_path 2>/dev/null); do
+    if [[ -d "$dir" && -f "$dir/conf/server.xml" ]]; then
+      echo "\n📦 Checking: $dir"
+      echo "\n==================================================" >> "$REPORT"
+      echo "Tomcat instance: $dir" >> "$REPORT"
+      version=$(get_tomcat_version "$dir")
+      major=$(echo "$version" | cut -d'.' -f1)
+      echo "Version: $version" | tee -a "$REPORT"
+      check_all_cis_controls "$dir" "$major"
+    fi
+  done
+done
+
+echo -e "\n✅ CIS checks completed. Full report: $REPORT"
+cat "$REPORT"
