@@ -1,13 +1,8 @@
 #!/bin/bash
 
-# Apache Tomcat CIS Compliance Checker (No InSpec)
-# Scans for Tomcat installations, detects version, checks for ALL CIS control compliance (7–11)
-# Output: Terminal + ~/tomcat_cis_compliance_report.txt
-
-REPORT="$HOME/tomcat_cis_compliance_report.txt"
-echo "Apache Tomcat CIS Compliance Report" > "$REPORT"
-echo "Generated: $(date)" >> "$REPORT"
-echo "==================================================" >> "$REPORT"
+# Apache Tomcat CIS Compliance Checker (Launcher Only)
+# Detects Tomcat installations, identifies the version, and executes the correct CIS audit script.
+# Does not enforce changes. Only the selected function script handles report generation.
 
 TOMCAT_DIRS=(
     "/opt/keeper/share/guacamole/tomcat"
@@ -44,48 +39,72 @@ TOMCAT_DIRS=(
 
 get_tomcat_version() {
   local dir="$1"
-  local jar=$(find "$dir" -name catalina.jar 2>/dev/null | head -n1)
+  local jar
+  jar=$(find "$dir" -name catalina.jar 2>/dev/null | head -n1)
   if [[ -f "$jar" ]]; then
-    unzip -p "$jar" META-INF/MANIFEST.MF 2>/dev/null | grep "Implementation-Version" | awk '{print $2}'
+    unzip -p "$jar" META-INF/MANIFEST.MF 2>/dev/null | grep "Implementation-Version" | awk '{print $2}' | cut -d'-' -f1
   else
     echo ""
   fi
 }
 
-# Control logic will be added below per CIS benchmark section and Tomcat version
-source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v7.sh)
-source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v8.sh)
-source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v9.sh)
-source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v10.sh)
-source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v11.sh)
-
-check_all_cis_controls() {
+launch_cis_check() {
   local dir="$1"
-  local version_major="$2"
+  local major="$2"
+  local report_path=""
 
-  case "$version_major" in
-    7) check_controls_v7 "$dir" ;;
-    8) check_controls_v8 "$dir" ;;
-    9) check_controls_v9 "$dir" ;;
-    10) check_controls_v10 "$dir" ;;
-    11) check_controls_v11 "$dir" ;;
-    *) echo "⚠️ Unsupported version: $version_major" >> "$REPORT" ;;
+  case "$major" in
+    7)
+      source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v7.sh)
+      check_controls_v7 "$dir"
+      report_path="$dir/tomcat7_cis_compliance_report.txt"
+      ;;
+    8)
+      source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v8.sh)
+      check_controls_v8 "$dir"
+      report_path="$dir/tomcat8_cis_compliance_report.txt"
+      ;;
+    9)
+      source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v9.sh)
+      check_controls_v9 "$dir"
+      report_path="$dir/tomcat9_cis_compliance_report.txt"
+      ;;
+    10)
+      source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v10.sh)
+      check_controls_v10 "$dir"
+      report_path="$dir/tomcat10_cis_compliance_report.txt"
+      ;;
+    11)
+      source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v11.sh)
+      check_controls_v11 "$dir"
+      report_path="$dir/tomcat11_cis_compliance_report.txt"
+      ;;
+    *)
+      echo "⚠️ Unsupported Tomcat version: $major"
+      return
+      ;;
   esac
+
+  if [[ -f "$report_path" ]]; then
+    echo "📄 Report generated at: $report_path"
+  else
+    echo "⚠️ Expected report file not found: $report_path"
+  fi
 }
 
+# Search and scan for Tomcat instances
 for base_path in "${TOMCAT_DIRS[@]}"; do
   for dir in $(ls -d $base_path 2>/dev/null); do
     if [[ -d "$dir" && -f "$dir/conf/server.xml" ]]; then
-      echo "\n📦 Checking: $dir"
-      echo "\n==================================================" >> "$REPORT"
-      echo "Tomcat instance: $dir" >> "$REPORT"
+      echo -e "\n📦 Found Tomcat at: $dir"
       version=$(get_tomcat_version "$dir")
-      major=$(echo "$version" | cut -d'.' -f1)
-      echo "Version: $version" | tee -a "$REPORT"
-      check_all_cis_controls "$dir" "$major"
+      if [[ -n "$version" ]]; then
+        major=$(echo "$version" | cut -d'.' -f1)
+        echo "🔍 Detected version: $version (major: $major)"
+        launch_cis_check "$dir" "$major"
+      else
+        echo "⚠️ Could not determine version for: $dir"
+      fi
     fi
   done
 done
-
-echo -e "\n✅ CIS checks completed. Full report: $REPORT"
-cat "$REPORT"
