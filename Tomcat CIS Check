@@ -35,6 +35,8 @@ TOMCAT_DIRS=(
     "/opt/eomportal"
     "/opt/patientportal"
     "/opt/peportal"
+    "/opt/ssoportal"
+    "opt/docstore"
 )
 
 get_tomcat_version() {
