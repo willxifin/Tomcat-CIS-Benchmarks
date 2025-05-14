@@ -14,9 +14,7 @@ check_controls_v9() {
   local report_path="/tmp/$report_name"
 
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "───────────────────────────────────────────────"
-  echo "🔍 Running Apache Tomcat 9 CIS Benchmark Checks"
-  echo "───────────────────────────────────────────────"
+  echo "Apache Tomcat Hardening Assessment"
   echo "Host: $hostname"
   echo "Version: $("$dir/bin/version.sh" 2>/dev/null | grep 'Server number' | cut -d':' -f2 | xargs)"
   echo "Date: $(date)"
@@ -390,6 +388,128 @@ check_controls_v9() {
     echo "Exploitability: Medium" | tee -a "$report_path"
     echo "Remediation: Set autoDeploy=\"false\" and deployOnStartup=\"false\" in Host element of server.xml" | tee -a "$report_path"
   fi
+
+  # [CIS 10.1] Set appropriate file permissions for deployment directories
+  echo -e "
+[CIS 10.1] Check deployment directory permissions" | tee -a "$report_path"
+  deploy_dir="$dir/webapps"
+  if [[ -d "$deploy_dir" ]]; then
+    perms=$(stat -c "%a" "$deploy_dir")
+    owner=$(stat -c "%U:%G" "$deploy_dir")
+    echo "Evidence: $deploy_dir permissions = $perms, owner = $owner" | tee -a "$report_path"
+    if [[ "$owner" == "tomcat_admin:tomcat" && $perms -le 750 ]]; then
+      echo "✅ Secure permissions on deployment directory" | tee -a "$report_path"
+    else
+      echo "❌ Insecure permissions on deployment directory" | tee -a "$report_path"
+      echo "Exploitability: Medium" | tee -a "$report_path"
+      echo "Remediation: chown tomcat_admin:tomcat $deploy_dir && chmod 750 $deploy_dir" | tee -a "$report_path"
+    fi
+  else
+    echo "⚠️ Deployment directory not found: $deploy_dir" | tee -a "$report_path"
+  fi
+
+  # [CIS 10.2] Remove sample application directories
+  echo -e "
+[CIS 10.2] Remove sample application directories" | tee -a "$report_path"
+  samples=(examples webdav host-manager docs)
+  sample_found=0
+  for s in "${samples[@]}"; do
+    if [[ -d "$dir/webapps/$s" ]]; then
+      echo "❌ Sample app '$s' found in webapps" | tee -a "$report_path"
+      sample_found=1
+    fi
+  done
+  if [[ $sample_found -eq 0 ]]; then
+    echo "✅ No sample applications found in webapps" | tee -a "$report_path"
+  else
+    echo "Exploitability: Medium" | tee -a "$report_path"
+    echo "Remediation: Remove sample apps from $dir/webapps if not needed" | tee -a "$report_path"
+  fi
+
+  # [CIS 10.3] Remove default or sample users and roles
+  echo -e "
+[CIS 10.3] Remove default users and roles" | tee -a "$report_path"
+  if grep -q '<user username="tomcat"' "$dir/conf/tomcat-users.xml"; then
+    echo "❌ Default 'tomcat' user found" | tee -a "$report_path"
+    echo "Exploitability: High" | tee -a "$report_path"
+    echo "Remediation: Remove or replace default user accounts in tomcat-users.xml" | tee -a "$report_path"
+  else
+    echo "✅ No default user accounts found" | tee -a "$report_path"
+  fi
+
+  # [CIS 10.4] Set secure default web.xml policies
+  echo -e "
+[CIS 10.4] Validate security constraints in web.xml" | tee -a "$report_path"
+  if grep -q '<security-constraint>' "$dir/conf/web.xml"; then
+    echo "✅ Security constraints present in web.xml" | tee -a "$report_path"
+  else
+    echo "❌ No security-constraint blocks found in web.xml" | tee -a "$report_path"
+    echo "Exploitability: Medium" | tee -a "$report_path"
+    echo "Remediation: Define <security-constraint> blocks in default web.xml" | tee -a "$report_path"
+  fi
+
+  # [CIS 10.5] Enforce session timeout in web.xml
+  echo -e "\n[CIS 10.5] Enforce session timeout" | tee -a "$report_path"
+  timeout_val=$(grep -oPm1 "(?<=<session-timeout>)[0-9]+" "$dir/conf/web.xml")
+  if [[ -n "$timeout_val" && "$timeout_val" -le 30 ]]; then
+    echo "✅ Session timeout is set to $timeout_val minutes" | tee -a "$report_path"
+  else
+    echo "❌ Session timeout not set or greater than 30 minutes" | tee -a "$report_path"
+    echo "Exploitability: Medium" | tee -a "$report_path"
+    echo "Remediation: Set <session-timeout>30</session-timeout> in web.xml" | tee -a "$report_path"
+  fi
+
+  # [CIS 10.6] Enforce secure cookies
+  echo -e "\n[CIS 10.6] Enforce secure cookies" | tee -a "$report_path"
+  if grep -q '<cookie-config>' "$dir/conf/web.xml" && grep -q '<secure>true</secure>' "$dir/conf/web.xml"; then
+    echo "✅ Secure cookies enabled in web.xml" | tee -a "$report_path"
+  else
+    echo "❌ Secure cookie flag not enabled" | tee -a "$report_path"
+    echo "Exploitability: Medium" | tee -a "$report_path"
+    echo "Remediation: Add <cookie-config><secure>true</secure></cookie-config> to web.xml" | tee -a "$report_path"
+  fi
+
+  # [CIS 10.7] Configure HttpOnly cookies
+  echo -e "\n[CIS 10.7] Configure HttpOnly cookies" | tee -a "$report_path"
+  if grep -q '<http-only>true</http-only>' "$dir/conf/web.xml"; then
+    echo "✅ HttpOnly cookie flag is enabled" | tee -a "$report_path"
+  else
+    echo "❌ HttpOnly cookie flag not set" | tee -a "$report_path"
+    echo "Exploitability: Medium" | tee -a "$report_path"
+    echo "Remediation: Add <http-only>true</http-only> inside <cookie-config> in web.xml" | tee -a "$report_path"
+  fi
+
+  # [CIS 10.8] Enforce transport security (confidential constraints)
+  echo -e "\n[CIS 10.8] Enforce transport security" | tee -a "$report_path"
+  if grep -q '<transport-guarantee>CONFIDENTIAL</transport-guarantee>' "$dir/conf/web.xml"; then
+    echo "✅ Confidential transport-guarantee present in web.xml" | tee -a "$report_path"
+  else
+    echo "❌ transport-guarantee not set to CONFIDENTIAL" | tee -a "$report_path"
+    echo "Exploitability: High" | tee -a "$report_path"
+    echo "Remediation: Define <transport-guarantee>CONFIDENTIAL</transport-guarantee> in <security-constraint>" | tee -a "$report_path"
+  fi
+
+  # [CIS 10.9] Disable directory listings
+  echo -e "\n[CIS 10.9] Disable directory listings" | tee -a "$report_path"
+  if grep -q 'listings="false"' "$dir/conf/web.xml"; then
+    echo "✅ Directory listings are disabled" | tee -a "$report_path"
+  else
+    echo "❌ Directory listings may be enabled" | tee -a "$report_path"
+    echo "Exploitability: Medium" | tee -a "$report_path"
+    echo "Remediation: Set listings=\"false\" in default servlet in web.xml" | tee -a "$report_path"
+  fi
+
+  # [CIS 10.10 - 10.19] Additional control hooks
+  echo -e "\n[CIS 10.10 - 10.19] Verify application deployment security settings" | tee -a "$report_path"
+  echo "ℹ️ Review all deployed apps for:" | tee -a "$report_path"
+  echo "- Disabled JSP compilation" | tee -a "$report_path"
+  echo "- Disabled file uploads unless required" | tee -a "$report_path"
+  echo "- Security constraints per application" | tee -a "$report_path"
+  echo "- Proper <welcome-file-list> and <error-page> use" | tee -a "$report_path"
+  echo "- Absence of unsecured test/debug servlets" | tee -a "$report_path"
+  echo "- Correct use of role-based access controls" | tee -a "$report_path"
+  echo "❗ Manual review recommended for apps in $dir/webapps" | tee -a "$report_path"
+
 
   # === Upload Report to GitHub if GH_TOKEN is defined ===
   if [[ -n "$GH_TOKEN" ]]; then
