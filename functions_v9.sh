@@ -14,7 +14,7 @@ check_controls_v9() {
   local report_path="/tmp/$report_name"
 
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "Apache Tomcat Hardening Assessment"
+  echo "Apache Tomcat 9 Hardening Assessment"
   echo "Host: $hostname"
   echo "Version: $("$dir/bin/version.sh" 2>/dev/null | grep 'Server number' | cut -d':' -f2 | xargs)"
   echo "Date: $(date)"
