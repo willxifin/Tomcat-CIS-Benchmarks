@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Apache Tomcat 11 CIS Benchmark v1.0.0 - FULL Compliance Validation
+# Apache Tomcat 7 CIS Benchmark - FULL Compliance Validation
 # This script performs all CIS checks, evaluates pass/fail, captures evidence,
 # rates exploitability, and provides full remediation guidance.
 # Output is written to both screen and a compliance report, which is uploaded
