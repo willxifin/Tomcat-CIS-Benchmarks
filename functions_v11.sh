@@ -10,8 +10,14 @@ check_controls_v11() {
   local dir="$1"
   local hostname=$(hostname)
   local timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
+  
+  # Ensure output directory exists
+  local output_dir="/opt/tomcat_hardening"
+  mkdir -p "$output_dir"
+
+  # Set report path
   local report_name="${hostname}_tomcat11_cis_compliance_${timestamp}.txt"
-  local report_path="/tmp/$report_name"
+  local report_path="$output_dir/$report_name"
 
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "Apache Tomcat 11 Hardening Assessment"
