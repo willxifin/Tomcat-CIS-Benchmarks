@@ -626,11 +626,11 @@ done
   #  filename="${hostname}.txt"
   #  encoded_content=$(base64 -w 0 "$report_path")
 
-    curl -s -X PUT \
-      -H "Authorization: token $GH_TOKEN" \
-      -H "Content-Type: application/json" \
-      -d "{\"message\": \"Upload compliance report for $hostname\", \"content\": \"$encoded_content\"}" \
-      "https://api.github.com/repos/$repo/contents/reports/$filename"
+  #  curl -s -X PUT \
+  #    -H "Authorization: token $GH_TOKEN" \
+  #    -H "Content-Type: application/json" \
+  #    -d "{\"message\": \"Upload compliance report for $hostname\", \"content\": \"$encoded_content\"}" \
+ #     "https://api.github.com/repos/$repo/contents/reports/$filename"
   fi
 
   # === Exit with result summary ===
