@@ -7,6 +7,30 @@
 # to a GitHub repository if GH_TOKEN is present.
 
 check_controls_v10() {
+
+  local dir="$1"
+  local hostname
+  hostname=$(hostname)
+  local timestamp
+  timestamp=$(date +%Y%m%d_%H%M%S)
+  local output_dir="/opt/tomcat_hardening"
+  mkdir -p "$output_dir"
+
+  local dir_name
+  dir_name=$(basename "$dir")
+  local version
+  version=$("$dir/bin/version.sh" 2>/dev/null | grep 'Server number' | cut -d':' -f2 | xargs | tr -d '\r')
+
+  local report_path="${output_dir}/tomcat10_cis_compliance_${dir_name}.txt"
+
+  {
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Apache Tomcat 10 Hardening Assessment"
+    echo "Host: $hostname"
+    echo "Version: $version"
+    echo "Date: $(date)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  } > "$report_path"
   local dir="$1"
   local hostname=$(hostname)
   local timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
@@ -17,7 +41,6 @@ check_controls_v10() {
 
   # Set report path
   local report_name="${hostname}_tomcat10_cis_compliance_${timestamp}.txt"
-  local report_path="$output_dir/$report_name"
 
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "Apache Tomcat 10 Hardening Assessment"
@@ -594,7 +617,6 @@ done
   hardening_dir="/opt/tomcat_hardening"
   mkdir -p "$hardening_dir"  # Create directory if it doesn't exist
 
-  local_report_path="$hardening_dir/${hostname}_tomcat9_cis_compliance_${timestamp}.txt"
   cp "$report_path" "$local_report_path"
   echo "📄 Report copied to $local_report_path"
  
