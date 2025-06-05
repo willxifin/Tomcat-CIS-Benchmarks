@@ -53,33 +53,37 @@ get_tomcat_version() {
 launch_cis_check() {
   local dir="$1"
   local major="$2"
-  local report_path=""
+  local base_name
+  base_name=$(basename "$dir")
+  local report_path="/opt/tomcat_hardening/tomcat${major}_cis_compliance_${base_name}.txt"
+
+  mkdir -p /opt/tomcat_hardening
 
   case "$major" in
     7)
       source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v7.sh)
       check_controls_v7 "$dir"
-      report_path="$dir/tomcat7_cis_compliance_report.txt"
+      report_path="/opt/tomcat_hardening/tomcat${major}_cis_compliance_$(basename "$dir").txt"
       ;;
     8)
       source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v8.sh)
       check_controls_v8 "$dir"
-      report_path="$dir/tomcat8_cis_compliance_report.txt"
+      report_path="/opt/tomcat_hardening/tomcat${major}_cis_compliance_$(basename "$dir").txt"
       ;;
     9)
       source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v9.sh)
       check_controls_v9 "$dir"
-      report_path="$dir/tomcat9_cis_compliance_report.txt"
+      report_path="/opt/tomcat_hardening/tomcat${major}_cis_compliance_$(basename "$dir").txt"
       ;;
     10)
       source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v10.sh)
       check_controls_v10 "$dir"
-      report_path="$dir/tomcat10_cis_compliance_report.txt"
+      report_path="/opt/tomcat_hardening/tomcat${major}_cis_compliance_$(basename "$dir").txt"
       ;;
     11)
       source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v11.sh)
       check_controls_v11 "$dir"
-      report_path="$dir/tomcat11_cis_compliance_report.txt"
+      report_path="/opt/tomcat_hardening/tomcat${major}_cis_compliance_$(basename "$dir").txt"
       ;;
     *)
       echo "⚠️ Unsupported Tomcat version: $major"
