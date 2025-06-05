@@ -590,11 +590,19 @@ for control in {5..19}; do
   echo "Remediation: Harden each deployed web application individually per secure coding standards and business requirements." | tee -a "$report_path"
 done
 
-   # === Upload Report to GitHub if GH_TOKEN is defined ===
-  if [[ -n "$GH_TOKEN" ]]; then
-    repo="XIFIN-Inc/TomcatHardening-Security"
-    filename="${hostname}.txt"
-    encoded_content=$(base64 -w 0 "$report_path")
+  # === Save report to /opt/tomcat_hardening ===
+  hardening_dir="/opt/tomcat_hardening"
+  mkdir -p "$hardening_dir"  # Create directory if it doesn't exist
+
+  local_report_path="$hardening_dir/${hostname}_tomcat9_cis_compliance_${timestamp}.txt"
+  cp "$report_path" "$local_report_path"
+  echo "📄 Report copied to $local_report_path"
+ 
+  ## === Upload Report to GitHub if GH_TOKEN is defined ===
+  #if [[ -n "$GH_TOKEN" ]]; then
+  #  repo="XIFIN-Inc/TomcatHardening-Security"
+  #  filename="${hostname}.txt"
+  #  encoded_content=$(base64 -w 0 "$report_path")
 
     curl -s -X PUT \
       -H "Authorization: token $GH_TOKEN" \
