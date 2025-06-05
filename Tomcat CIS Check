@@ -50,40 +50,39 @@ get_tomcat_version() {
   fi
 }
 
+# Ensure output directory exists
+HARDEN_DIR="/opt/tomcat_hardening"
+mkdir -p "$HARDEN_DIR"
+
 launch_cis_check() {
   local dir="$1"
   local major="$2"
-  local base_name
-  base_name=$(basename "$dir")
-  local report_path="/opt/tomcat_hardening/tomcat${major}_cis_compliance_${base_name}.txt"
-
-  mkdir -p /opt/tomcat_hardening
+  local instance_name
+  instance_name=$(basename "$dir")
+  local version
+  version=$(get_tomcat_version "$dir")
+  local report_path="$HARDEN_DIR/tomcat${major}_cis_compliance_${instance_name}.txt"
 
   case "$major" in
     7)
       source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v7.sh)
-      check_controls_v7 "$dir"
-      report_path="/opt/tomcat_hardening/tomcat${major}_cis_compliance_$(basename "$dir").txt"
+      check_controls_v7 "$dir" > "$report_path"
       ;;
     8)
       source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v8.sh)
-      check_controls_v8 "$dir"
-      report_path="/opt/tomcat_hardening/tomcat${major}_cis_compliance_$(basename "$dir").txt"
+      check_controls_v8 "$dir" > "$report_path"
       ;;
     9)
       source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v9.sh)
-      check_controls_v9 "$dir"
-      report_path="/opt/tomcat_hardening/tomcat${major}_cis_compliance_$(basename "$dir").txt"
+      check_controls_v9 "$dir" > "$report_path"
       ;;
     10)
       source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v10.sh)
-      check_controls_v10 "$dir"
-      report_path="/opt/tomcat_hardening/tomcat${major}_cis_compliance_$(basename "$dir").txt"
+      check_controls_v10 "$dir" > "$report_path"
       ;;
     11)
       source <(curl -sSL https://raw.githubusercontent.com/willxifin/Tomcat-CIS-Benchmarks/main/functions_v11.sh)
-      check_controls_v11 "$dir"
-      report_path="/opt/tomcat_hardening/tomcat${major}_cis_compliance_$(basename "$dir").txt"
+      check_controls_v11 "$dir" > "$report_path"
       ;;
     *)
       echo "⚠️ Unsupported Tomcat version: $major"
@@ -91,14 +90,15 @@ launch_cis_check() {
       ;;
   esac
 
-  if [[ -f "$report_path" ]]; then
-    echo "📄 Report generated at: $report_path"
+  # Validate report
+  if [[ -s "$report_path" ]]; then
+    echo "✅ Report generated: $report_path"
   else
-    echo "⚠️ Expected report file not found: $report_path"
+    echo "❌ Report missing or empty: $report_path"
   fi
 }
 
-# Search and scan for Tomcat instances
+# Discover and scan Tomcat instances
 for base_path in "${TOMCAT_DIRS[@]}"; do
   for dir in $(ls -d $base_path 2>/dev/null); do
     if [[ -d "$dir" && -f "$dir/conf/server.xml" ]]; then
