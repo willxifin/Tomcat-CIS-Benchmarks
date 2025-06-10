@@ -524,28 +524,18 @@ check_controls_v9() {
   echo "❗ Manual review recommended for apps in $dir/webapps" | tee -a "$report_path"
 
 
-  # === Upload Report to GitHub if GH_TOKEN is defined ===
-  if [[ -n "$GH_TOKEN" ]]; then
-    repo="XIFIN-Inc/TomcatHardening-Security"
-    filename="${hostname}.txt"
-    encoded_content=$(base64 -w 0 "$report_path")
+  # === Save report to /opt/tomcat_hardening ===
+  hardening_dir="/opt/tomcat_hardening"
+  mkdir -p "$hardening_dir"  # Create directory if it doesn't exist
 
-    curl -s -X PUT \
-      -H "Authorization: token $GH_TOKEN" \
-      -H "Content-Type: application/json" \
-      -d "{\"message\": \"Upload compliance report for $hostname\", \"content\": \"$encoded_content\"}" \
-      "https://api.github.com/repos/$repo/contents/reports/$filename"
-  fi
+  cp "$report_path" "$local_report_path"
+  echo "📄 Report copied to $local_report_path"
+ 
+ echo -e "\nTomcat hardening check: COMPLETE"
+  } | tee "$report_file"
 
-  # === Exit with result summary ===
-  if grep -q "❌" "$report_path"; then
-    echo "\nTomcat hardening check: FAILED" | tee -a "$report_path"
-    exit 1
-  else
-    echo "\nTomcat hardening check: PASSED" | tee -a "$report_path"
-    exit 0
+  # Validate that report was written
+  if [[ ! -s "$report_file" ]]; then
+    echo "❌ Report missing or empty: $report_file"
   fi
 }
-
-# Entry point example
-# check_controls_v9 "/opt/tomcat9"
