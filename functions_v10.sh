@@ -7,6 +7,7 @@
 # to a GitHub repository if GH_TOKEN is present.
 
 check_controls_v10() {
+  local dir="$instance_path"
   local instance_path="$1"
   local instance_name
   instance_name=$(basename "$instance_path")
