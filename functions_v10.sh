@@ -7,51 +7,32 @@
 # to a GitHub repository if GH_TOKEN is present.
 
 check_controls_v10() {
+  local instance_path="$1"
+  local instance_name
+  instance_name=$(basename "$instance_path")
+  local version_file="$instance_path/lib/catalina.jar"
+  local report_dir="/opt/tomcat_hardening"
+  local version=""
+  local major_version="10"
+  local report_file=""
 
-  local dir="$1"
-  local hostname
-  hostname=$(hostname)
-  local timestamp
-  timestamp=$(date +%Y%m%d_%H%M%S)
-  local output_dir="/opt/tomcat_hardening"
-  mkdir -p "$output_dir"
+  # Ensure report directory exists
+  mkdir -p "$report_dir"
 
-  local dir_name
-  dir_name=$(basename "$dir")
-  local version
-  version=$("$dir/bin/version.sh" 2>/dev/null | grep 'Server number' | cut -d':' -f2 | xargs | tr -d '\r')
+  if [[ -f "$version_file" ]]; then
+    version=$(unzip -p "$version_file" META-INF/MANIFEST.MF | grep 'Implementation-Version' | cut -d' ' -f2 | tr -d '\r')
+  fi
 
-  local report_path="${output_dir}/tomcat10_cis_compliance_${dir_name}.txt"
+  report_file="$report_dir/tomcat${major_version}_cis_compliance_${instance_name}.txt"
 
   {
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "Apache Tomcat 10 Hardening Assessment"
-    echo "Host: $hostname"
+    echo "Apache Tomcat ${major_version} Hardening Assessment"
+    echo "Host: $(hostname)"
     echo "Version: $version"
     echo "Date: $(date)"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  } > "$report_path"
-  local dir="$1"
-  local hostname=$(hostname)
-  local timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
-  
-  # Ensure output directory exists
-  local output_dir="/opt/tomcat_hardening"
-  mkdir -p "$output_dir"
-
-  # Set report path
-  local report_name="${hostname}_tomcat10_cis_compliance_${timestamp}.txt"
-
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "Apache Tomcat 10 Hardening Assessment"
-  echo "Host: $hostname"
-  echo "Version: $("$dir/bin/version.sh" 2>/dev/null | grep 'Server number' | cut -d':' -f2 | xargs)"
-  echo "Date: $(date)"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-  echo "Apache Tomcat 10 Compliance Report - $(date)" > "$report_path"
-  echo "Host: $hostname" >> "$report_path"
-  echo "Tomcat Version: $("$dir/bin/version.sh" 2>/dev/null | grep 'Server number' | cut -d':' -f2 | xargs)" >> "$report_path"
+    echo ""
 
 # [CIS 1.1] Remove sample applications and documentation
 echo -e "\n[CIS 1.1] Remove sample applications and documentation" | tee -a "$report_path"
@@ -620,25 +601,11 @@ done
   cp "$report_path" "$local_report_path"
   echo "📄 Report copied to $local_report_path"
  
-  ## === Upload Report to GitHub if GH_TOKEN is defined ===
-  #if [[ -n "$GH_TOKEN" ]]; then
-  #  repo="XIFIN-Inc/TomcatHardening-Security"
-  #  filename="${hostname}.txt"
-  #  encoded_content=$(base64 -w 0 "$report_path")
+ echo -e "\nTomcat hardening check: COMPLETE"
+  } | tee "$report_file"
 
-  #  curl -s -X PUT \
-  #    -H "Authorization: token $GH_TOKEN" \
-  #    -H "Content-Type: application/json" \
-  #    -d "{\"message\": \"Upload compliance report for $hostname\", \"content\": \"$encoded_content\"}" \
- #     "https://api.github.com/repos/$repo/contents/reports/$filename"
-  fi
-
-  # === Exit with result summary ===
-  if grep -q "❌" "$report_path"; then
-    echo "\nTomcat hardening check: FAILED" | tee -a "$report_path"
-    exit 1
-  else
-    echo "\nTomcat hardening check: PASSED" | tee -a "$report_path"
-    exit 0
+  # Validate that report was written
+  if [[ ! -s "$report_file" ]]; then
+    echo "❌ Report missing or empty: $report_file"
   fi
 }
