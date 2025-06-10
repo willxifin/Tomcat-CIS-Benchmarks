@@ -7,17 +7,24 @@
 # to a GitHub repository if GH_TOKEN is present.
 
 check_controls_v11() {
-  local dir="$1"
-  local hostname=$(hostname)
-  local timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
-  
-  # Ensure output directory exists
-  local output_dir="/opt/tomcat_hardening"
-  mkdir -p "$output_dir"
+  local dir="$instance_path"
+  local instance_path="$1"
+  local instance_name
+  instance_name=$(basename "$instance_path")
+  local version_file="$instance_path/lib/catalina.jar"
+  local report_dir="/opt/tomcat_hardening"
+  local version=""
+  local major_version="10"
+  local report_file=""
 
-  # Set report path
-  local report_name="${hostname}_tomcat11_cis_compliance_${timestamp}.txt"
-  local report_path="$output_dir/$report_name"
+  # Ensure report directory exists
+  mkdir -p "$report_dir"
+
+  if [[ -f "$version_file" ]]; then
+    version=$(unzip -p "$version_file" META-INF/MANIFEST.MF | grep 'Implementation-Version' | cut -d' ' -f2 | tr -d '\r')
+  fi
+
+  report_file="$report_dir/tomcat${major_version}_cis_compliance_${instance_name}.txt"
 
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "Apache Tomcat 11 Hardening Assessment"
